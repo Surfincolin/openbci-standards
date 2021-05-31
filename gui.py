@@ -220,19 +220,35 @@ class RunTime():
 	ITI = 500.0
 
 
-class SellerController:
+class SpellerController:
 	def __init__(self, speller, lsl_outlet=None):
 		self.speller = speller
 		self.lsl_outlet = lsl_outlet
 		self.queue = ActionQueue()
 		self.status = 'No Prompt'
+		self.last_draw = None
+
+		self.prompt = visual.TextBox(
+			window = self.speller.win,
+			text = self.status,
+			font_size = 24,
+			color_space='rgb',
+			font_color=[-1,-1,-1],
+			background_color=[1,1,1],
+			border_color=[1,1,1],
+			border_stroke_width=10,
+			size=(min(self.speller.win.size[0],1280), 120),
+			pos=(0.0,0),
+			units='pix'
+			)
+	#pos=(0.0,self.speller.win.size[1]/2-30),
 
 	def CreateSequence(self, action_list):
-		for action, duration in action_list:
+		for action, duration, draw in action_list:
 			n_frames = MsToFrames(duration)
-			self.queue.add((action, self.speller.draw))
+			self.queue.add((action, draw))
 			for i in range(n_frames-1):
-				self.queue.add((self.DummyAction, self.speller.draw))
+				self.queue.add((self.DummyAction, draw))
 			
 	def DummyAction(self):
 		pass
@@ -240,45 +256,50 @@ class SellerController:
 	def RunFrame(self):
 		if self.queue.size() > 0:
 			action, draw = self.queue.get()
+			self.last_draw = draw
 			action()
 			draw()
+		else:
+			self.last_draw()
+
+	def mark_and_update(self, index):
+		marker = list([str(index)])
+		self.speller.update(index)
+		if self.lsl_outlet is not None:
+			self.lsl_outlet.push_sample(marker);
+    
 
 	def TrialActionList(self):
 		order = list(range(self.speller.dim * 2))
 		shuffle(order)
 		action_list = []
 		for val in order:
-			action = lambda v=val: self.speller.update(v)
+			action = lambda v=val: self.mark_and_update(v)
 			duration = RunTime.STIM
-			action_list.append((action, duration))
+			action_list.append((action, duration, self.speller.draw))
 			action = self.speller.reset
 			duration = RunTime.ISI
-			action_list.append((action, duration))
+			action_list.append((action, duration, self.speller.draw))
 
 		action = self.speller.reset
 		duration = RunTime.ITI
-		action_list.append((action, duration))
+		action_list.append((action, duration, self.speller.draw))
 
 		return action_list
 
 	def update_status_prompt(self, status):
 		self.status = status
+		self.prompt.setText(self.status)
+		if self.lsl_outlet is not None:
+			marker = list([status])
+			self.lsl_outlet.push_sample(marker);
+
+	def draw_prompt_overlay(self):
+		self.speller.draw()
+		self.prompt.draw()
 
 	def get_status_prompt_action(self, duration):
-		self.prompt = visual.TextBox(
-			window = self.speller.win,
-			text = self.status,
-			font_size = 18,
-			color_space='rgb',
-			font_color=[-1,-1,-1],
-			background_color=[1,1,1],
-			border_color=[1,1,1],
-			border_stroke_width=10,
-			size=(min(gui.win.size[0],1280), 60),
-			pos=(0.0,gui.win.size[1]/2-30),
-			units='pix'
-			)
-		return (self.prompt.draw, duration)
+		return (self.DummyAction, duration, self.draw_prompt_overlay)
 
 
 class ActionQueue:
@@ -312,14 +333,15 @@ if __name__ == "__main__":
 	prompt = visual.TextBox(
 		window = gui.win,
 		text = 'Welcome to a Cyton P300 Speller',
-		font_size = 18,
+		font_size = 24,
 		color_space='rgb',
 		font_color=[-1,-1,-1],
 		background_color=[1,1,1],
 		border_color=[1,1,1],
 		border_stroke_width=10,
-		size=(min(gui.win.size[0],1280), 60),
-		pos=(0.0,gui.win.size[1]/2-30),
+		grid_horz_justification='center', 
+		size=(min(gui.win.size[0],1280), 120),
+		pos=(0.0,gui.win.size[1]/2-60),
 		units='pix'
 		)
 
@@ -329,14 +351,16 @@ if __name__ == "__main__":
 	while timer.getTime() < 0:
 		prompt.draw()
 		gui.win.flip()
-		
-	gui.win.flip()
 
 	print('__ Initiating Speller __')
 	speller = Speller(size=[700,700], position=[0,0], window=gui.win)
-	# lsl_info = StreamInfo('P300_Speller_Markers', 'Markers', 1, 0, 'string', 'speller_marker_stream')
-	# lsl_stream = StreamOutlet(lsl_info)
+	lsl_info = StreamInfo('P300_Speller_Markers', 'Markers', 1, 0, 'string', 'speller_marker_stream')
+	lsl_stream = StreamOutlet(lsl_info)
 
+	print('press "Enter" to continue')
+	input()
+	event.clearEvents()
+	
 	clock = core.Clock()
 
 	avg = 0
@@ -352,12 +376,83 @@ if __name__ == "__main__":
 	prompt = ['HELLO', 'WORLD']
 
 	print('__ Creating Sequence __')
-	controller = SellerController(speller=speller)
-	prompt_action = [controller.get_status_prompt_action(RunTime.LONG_WAIT)]
+	controller = SpellerController(speller=speller, lsl_outlet=lsl_stream)
+	
+	controller.update_status_prompt('Press "spacebar" to begin.')
+
+	controller.CreateSequence([
+		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+		(speller.calibrate, RunTime.ITI, speller.draw),
+		(speller.reset, RunTime.ITI, speller.draw),
+		(speller.calibrate, RunTime.ITI, speller.draw),
+		(speller.reset, RunTime.MED_WAIT, speller.draw)
+	])
+
+	controller.update_status_prompt('[H]ello')
+	prompt_action = [controller.get_status_prompt_action(RunTime.MED_WAIT)]
 	controller.CreateSequence(prompt_action)
+
+	controller.CreateSequence([
+		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+	])
+
 	for i in range(5):
 		tal = controller.TrialActionList()
 		controller.CreateSequence(tal)
+
+	prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
+	new_p_action = lambda input_str='H[e]llo': controller.update_status_prompt(input_str)
+
+	controller.CreateSequence([
+		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+		(new_p_action, prompt_action[1], prompt_action[2]),
+		(speller.reset, RunTime.MED_WAIT, speller.draw)
+	])
+
+	for i in range(5):
+		tal = controller.TrialActionList()
+		controller.CreateSequence(tal)
+
+	prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
+	new_p_action = lambda input_str='He[l]lo': controller.update_status_prompt(input_str)
+
+	controller.CreateSequence([
+		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+		(new_p_action, prompt_action[1], prompt_action[2]),
+		(speller.reset, RunTime.MED_WAIT, speller.draw)
+	])
+
+	for i in range(5):
+		tal = controller.TrialActionList()
+		controller.CreateSequence(tal)
+
+	prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
+	new_p_action = lambda input_str='Hel[l]o': controller.update_status_prompt(input_str)
+
+	controller.CreateSequence([
+		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+		(new_p_action, prompt_action[1], prompt_action[2]),
+		(speller.reset, RunTime.MED_WAIT, speller.draw)
+	])
+
+	for i in range(5):
+		tal = controller.TrialActionList()
+		controller.CreateSequence(tal)
+
+	prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
+	new_p_action = lambda input_str='Hell[o]': controller.update_status_prompt(input_str)
+
+	controller.CreateSequence([
+		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+		(new_p_action, prompt_action[1], prompt_action[2]),
+		(speller.reset, RunTime.MED_WAIT, speller.draw)
+	])
+
+	for i in range(5):
+		tal = controller.TrialActionList()
+		controller.CreateSequence(tal)
+
+
 
 	print('__ Begin __')
 	while True:		
@@ -366,25 +461,7 @@ if __name__ == "__main__":
 		elapsed = (cur_time - f_time) * 1000.0
 		if elapsed >= 1000.0/fps:
 			f_time = cur_time
-			
-			# notes:
-			# ~250ms 10/60*1000=166.6666
-			# 125ms -> 62.5ms or 125ms  capture 800ms
-			# Fz, Cz, Pz, Oz, P3, P4, PO7 and PO8
-			# referenced to the right earlobe and grounded to the left mastoid
-			# [1] https://www.frontiersin.org/articles/10.3389/fnhum.2019.00261/full#F1
-			# [2] https://www.frontiersin.org/articles/10.3389/fnhum.2013.00732/full
-
-
-			# if frame_count == frame_on:
-			# 	speller.update(index_count%12)
-
-			# if frame_count == frame_off:
-			# 	speller.reset()
-			# 	frame_count = -1
-			# 	index_count += 1
-
-			# speller.draw()
+		
 
 			controller.RunFrame()
 
@@ -405,3 +482,10 @@ if __name__ == "__main__":
 	gui.win.close()
 	core.quit()
 	
+# notes:
+# ~250ms 10/60*1000=166.6666
+# 125ms -> 62.5ms or 125ms  capture 800ms
+# Fz, Cz, Pz, Oz, P3, P4, PO7 and PO8
+# referenced to the right earlobe and grounded to the left mastoid
+# [1] https://www.frontiersin.org/articles/10.3389/fnhum.2019.00261/full#F1
+# [2] https://www.frontiersin.org/articles/10.3389/fnhum.2013.00732/full
