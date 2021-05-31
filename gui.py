@@ -1,9 +1,11 @@
 # gui.py
 
-from psychopy import visual, core, event
+from psychopy import visual, core, event, colors
 import math
 import numpy as np
+from random import shuffle
 from pylsl import StreamInfo, StreamOutlet, local_clock
+# from enum import Enum
 
 class PsychoGUI:
 	def __init__(self, fullscreen=False):
@@ -204,11 +206,101 @@ class Speller:
 		for l in self.ch_ctrl: l.on()
 		self.photoindicator.opacity = 1.0
 
+
+class RunTime():
+	# in ms
+	SHORT_WAIT = 2000.0
+	MED_WAIT = 3000.0
+	LONG_WAIT = 5000.0
+	# stimuli duration 125ms ~8 frames (133.33ms) at 60Hz
+	STIM = 133.33
+	# inter-stimuli interval
+	ISI = 133.33
+	# inter-trial interval
+	ITI = 500.0
+
+
+class SellerController:
+	def __init__(self, speller, lsl_outlet=None):
+		self.speller = speller
+		self.lsl_outlet = lsl_outlet
+		self.queue = ActionQueue()
+		self.status = 'No Prompt'
+
+	def CreateSequence(self, action_list):
+		for action, duration in action_list:
+			n_frames = MsToFrames(duration)
+			self.queue.add((action, self.speller.draw))
+			for i in range(n_frames-1):
+				self.queue.add((self.DummyAction, self.speller.draw))
+			
+	def DummyAction(self):
+		pass
+
+	def RunFrame(self):
+		if self.queue.size() > 0:
+			action, draw = self.queue.get()
+			action()
+			draw()
+
+	def TrialActionList(self):
+		order = list(range(self.speller.dim * 2))
+		shuffle(order)
+		action_list = []
+		for val in order:
+			action = lambda v=val: self.speller.update(v)
+			duration = RunTime.STIM
+			action_list.append((action, duration))
+			action = self.speller.reset
+			duration = RunTime.ISI
+			action_list.append((action, duration))
+
+		action = self.speller.reset
+		duration = RunTime.ITI
+		action_list.append((action, duration))
+
+		return action_list
+
+	def update_status_prompt(self, status):
+		self.status = status
+
+	def get_status_prompt_action(self, duration):
+		self.prompt = visual.TextBox(
+			window = self.speller.win,
+			text = self.status,
+			font_size = 18,
+			color_space='rgb',
+			font_color=[-1,-1,-1],
+			background_color=[1,1,1],
+			border_color=[1,1,1],
+			border_stroke_width=10,
+			size=(min(gui.win.size[0],1280), 60),
+			pos=(0.0,gui.win.size[1]/2-30),
+			units='pix'
+			)
+		return (self.prompt.draw, duration)
+
+
+class ActionQueue:
+	def __init__(self):
+		self.queue = []
+
+	def add(self, item):
+		self.queue.append(item)
+
+	def get(self):
+		if len(self.queue) < 1:
+			return None
+		return self.queue.pop(0)
+
+	def size(self):
+		return len(self.queue)
+
 # ==============
 #  HELPER FNC
 # ==============
-def MsToFrames(ms, fps):
-	return math.ceil(ms/(1000/fps))
+def MsToFrames(ms, fps = 60.0):
+	return math.ceil(ms/(1000.0/fps))
 
 
 # ==============
@@ -217,6 +309,30 @@ def MsToFrames(ms, fps):
 if __name__ == "__main__":
 	gui = PsychoGUI(fullscreen=False)
 
+	prompt = visual.TextBox(
+		window = gui.win,
+		text = 'Welcome to a Cyton P300 Speller',
+		font_size = 18,
+		color_space='rgb',
+		font_color=[-1,-1,-1],
+		background_color=[1,1,1],
+		border_color=[1,1,1],
+		border_stroke_width=10,
+		size=(min(gui.win.size[0],1280), 60),
+		pos=(0.0,gui.win.size[1]/2-30),
+		units='pix'
+		)
+
+	timer = core.Clock()
+	timer.add(4)
+	
+	while timer.getTime() < 0:
+		prompt.draw()
+		gui.win.flip()
+		
+	gui.win.flip()
+
+	print('__ Initiating Speller __')
 	speller = Speller(size=[700,700], position=[0,0], window=gui.win)
 	# lsl_info = StreamInfo('P300_Speller_Markers', 'Markers', 1, 0, 'string', 'speller_marker_stream')
 	# lsl_stream = StreamOutlet(lsl_info)
@@ -233,6 +349,17 @@ if __name__ == "__main__":
 	index_count = 0
 	speller.reset()
 
+	prompt = ['HELLO', 'WORLD']
+
+	print('__ Creating Sequence __')
+	controller = SellerController(speller=speller)
+	prompt_action = [controller.get_status_prompt_action(RunTime.LONG_WAIT)]
+	controller.CreateSequence(prompt_action)
+	for i in range(5):
+		tal = controller.TrialActionList()
+		controller.CreateSequence(tal)
+
+	print('__ Begin __')
 	while True:		
 
 		cur_time = clock.getTime()
@@ -249,15 +376,18 @@ if __name__ == "__main__":
 			# [2] https://www.frontiersin.org/articles/10.3389/fnhum.2013.00732/full
 
 
-			if frame_count == frame_on:
-				speller.update(index_count%12)
+			# if frame_count == frame_on:
+			# 	speller.update(index_count%12)
 
-			if frame_count == frame_off:
-				speller.reset()
-				frame_count = -1
-				index_count += 1
+			# if frame_count == frame_off:
+			# 	speller.reset()
+			# 	frame_count = -1
+			# 	index_count += 1
 
-			speller.draw()
+			# speller.draw()
+
+			controller.RunFrame()
+
 			gui.win.flip()
 			
 			frame_count += 1
@@ -269,7 +399,7 @@ if __name__ == "__main__":
 
 		event.clearEvents()
 
-
+	# print('__ End __')
 	total = round(avg,2)
 	print('Average Frame Duration:', total, 'ms')
 	gui.win.close()
