@@ -360,7 +360,7 @@ if __name__ == "__main__":
 	print('press "Enter" to continue')
 	input()
 	event.clearEvents()
-	
+
 	clock = core.Clock()
 
 	avg = 0
@@ -388,69 +388,22 @@ if __name__ == "__main__":
 		(speller.reset, RunTime.MED_WAIT, speller.draw)
 	])
 
-	controller.update_status_prompt('[H]ello')
-	prompt_action = [controller.get_status_prompt_action(RunTime.MED_WAIT)]
-	controller.CreateSequence(prompt_action)
+	trails_per_letter = 5
 
-	controller.CreateSequence([
-		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
-	])
+	for i in range(len(prompt[0])):
+		status = prompt[0][:i] + '[' + prompt[0][i] + ']' + prompt[0][i+1:]
+		prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
+		new_p_action = lambda input_str=status: controller.update_status_prompt(input_str)
 
-	for i in range(5):
-		tal = controller.TrialActionList()
-		controller.CreateSequence(tal)
+		controller.CreateSequence([
+			(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+			(new_p_action, prompt_action[1], prompt_action[2]),
+			(speller.reset, RunTime.MED_WAIT, speller.draw)
+		])
 
-	prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
-	new_p_action = lambda input_str='H[e]llo': controller.update_status_prompt(input_str)
-
-	controller.CreateSequence([
-		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
-		(new_p_action, prompt_action[1], prompt_action[2]),
-		(speller.reset, RunTime.MED_WAIT, speller.draw)
-	])
-
-	for i in range(5):
-		tal = controller.TrialActionList()
-		controller.CreateSequence(tal)
-
-	prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
-	new_p_action = lambda input_str='He[l]lo': controller.update_status_prompt(input_str)
-
-	controller.CreateSequence([
-		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
-		(new_p_action, prompt_action[1], prompt_action[2]),
-		(speller.reset, RunTime.MED_WAIT, speller.draw)
-	])
-
-	for i in range(5):
-		tal = controller.TrialActionList()
-		controller.CreateSequence(tal)
-
-	prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
-	new_p_action = lambda input_str='Hel[l]o': controller.update_status_prompt(input_str)
-
-	controller.CreateSequence([
-		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
-		(new_p_action, prompt_action[1], prompt_action[2]),
-		(speller.reset, RunTime.MED_WAIT, speller.draw)
-	])
-
-	for i in range(5):
-		tal = controller.TrialActionList()
-		controller.CreateSequence(tal)
-
-	prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
-	new_p_action = lambda input_str='Hell[o]': controller.update_status_prompt(input_str)
-
-	controller.CreateSequence([
-		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
-		(new_p_action, prompt_action[1], prompt_action[2]),
-		(speller.reset, RunTime.MED_WAIT, speller.draw)
-	])
-
-	for i in range(5):
-		tal = controller.TrialActionList()
-		controller.CreateSequence(tal)
+		for i in range(trails_per_letter):
+			tal = controller.TrialActionList()
+			controller.CreateSequence(tal)
 
 
 
@@ -485,7 +438,9 @@ if __name__ == "__main__":
 # notes:
 # ~250ms 10/60*1000=166.6666
 # 125ms -> 62.5ms or 125ms  capture 800ms
+# 10-10 standard
 # Fz, Cz, Pz, Oz, P3, P4, PO7 and PO8
+# Fz, Cz, Pz, CP1, CP2
 # referenced to the right earlobe and grounded to the left mastoid
 # [1] https://www.frontiersin.org/articles/10.3389/fnhum.2019.00261/full#F1
 # [2] https://www.frontiersin.org/articles/10.3389/fnhum.2013.00732/full
