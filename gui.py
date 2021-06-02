@@ -10,7 +10,8 @@ from pylsl import StreamInfo, StreamOutlet, local_clock
 class PsychoGUI:
 	def __init__(self, fullscreen=False):
 		# mon = monitors.Monitor('DELL U2718Q')
-		window_size = [1280, 720]
+		# window_size = [1280, 720]
+		window_size = [1680, 1050]
 
 		self.win = visual.Window(
 			screen=0,
@@ -328,7 +329,7 @@ def MsToFrames(ms, fps = 60.0):
 #  Main Sequence
 # ==============
 if __name__ == "__main__":
-	gui = PsychoGUI(fullscreen=False)
+	gui = PsychoGUI(fullscreen=True)
 
 	prompt = visual.TextBox(
 		window = gui.win,
@@ -357,9 +358,13 @@ if __name__ == "__main__":
 	lsl_info = StreamInfo('P300_Speller_Markers', 'Markers', 1, 0, 'string', 'speller_marker_stream')
 	lsl_stream = StreamOutlet(lsl_info)
 
-	print('press "Enter" to continue')
-	input()
+	gui.win.fullscr = False
+	while True:
+		if len(event.getKeys())>0:
+			break
+
 	event.clearEvents()
+	gui.win.fullscr = True
 
 	clock = core.Clock()
 
@@ -373,12 +378,12 @@ if __name__ == "__main__":
 	index_count = 0
 	speller.reset()
 
-	prompt = ['HELLO', 'WORLD']
+	prompt = ['SPELLER', 'WORLD']
 
 	print('__ Creating Sequence __')
 	controller = SpellerController(speller=speller, lsl_outlet=lsl_stream)
 	
-	controller.update_status_prompt('Press "spacebar" to begin.')
+	controller.update_status_prompt(prompt[0])
 
 	controller.CreateSequence([
 		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
@@ -388,7 +393,7 @@ if __name__ == "__main__":
 		(speller.reset, RunTime.MED_WAIT, speller.draw)
 	])
 
-	trails_per_letter = 5
+	trails_per_letter = 10
 
 	for i in range(len(prompt[0])):
 		status = prompt[0][:i] + '[' + prompt[0][i] + ']' + prompt[0][i+1:]
@@ -444,3 +449,6 @@ if __name__ == "__main__":
 # referenced to the right earlobe and grounded to the left mastoid
 # [1] https://www.frontiersin.org/articles/10.3389/fnhum.2019.00261/full#F1
 # [2] https://www.frontiersin.org/articles/10.3389/fnhum.2013.00732/full
+
+# 10-10 image
+# https://commons.wikimedia.org/wiki/File:EEG_10-10_system_with_additional_information.svg

@@ -10,9 +10,11 @@ import pyxdf
 import matplotlib.pyplot as plt
 import numpy as np
 
-dr = '/Users/colinwageman/Desktop/School/Cogs199/Recordings/latency/'
+# dr = '/Users/colinwageman/Desktop/School/Cogs199/Recordings/latency/'
+# dr = '/Users/colinwageman/Desktop/School/Cogs199/Recordings/Speller/'
+dr = '/Users/colinwageman/Desktop/School/Cogs199/Recordings/odd_ball/'
 # file = 'light_sensor-001.xdf'
-file = 'light_split_02.xdf'
+file = 'run_01.xdf'
 # file = 'aux_eeg-001.xdf'
 # file = 'double-001.xdf'
 # file = 'bci-001.xdf'

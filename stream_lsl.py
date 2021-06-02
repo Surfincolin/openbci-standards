@@ -20,20 +20,20 @@ class BoardControls:
 
 		self.board.prepare_session()
 
-		ch1 = 'x1010110X'
-		ch2 = 'x2110110X'
-		ch3 = 'x3110110X'
-		ch4 = 'x4110110X'
-		ch5 = 'x5110110X'
-		ch6 = 'x6110110X'
-		ch7 = 'x7110110X'
-		ch8 = 'x8110110X'
+		# ch1 = 'x1010110X'
+		# ch2 = 'x2110110X'
+		# ch3 = 'x3110110X'
+		# ch4 = 'x4110110X'
+		# ch5 = 'x5110110X'
+		# ch6 = 'x6110110X'
+		# ch7 = 'x7110110X'
+		# ch8 = 'x8110110X'
 
 		time.sleep(1)
 		print('::: Set Board to Analog :::')
 		self.board.config_board('/2')
 		time.sleep(1)
-		self.board.config_board(ch1+ch2+ch3+ch4+ch5+ch6+ch7+ch8)
+		# self.board.config_board(ch1+ch2+ch3+ch4+ch5+ch6+ch7+ch8)
 		time.sleep(1)
 
 		self.eegstream = None
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     board.start_stream()
     # time.sleep(1)
     count = 0
-    while count < 1520:
+    while count < 6000:
 	    board.log_data()
 	    count += 1
 
