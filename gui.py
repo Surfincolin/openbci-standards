@@ -95,7 +95,7 @@ class Speller:
 		self.ch_ctrl = []
 		ch_ctrl_mat = []
 
-		ltr_size = 60
+		ltr_size = 50
 		w_adj = size[0]-ltr_size
 		h_adj = size[1]-ltr_size
 		h_spacing = w_adj/(dim-1)
@@ -127,7 +127,7 @@ class Speller:
 		self.photoindicator = visual.Circle(
 			win=window,
 			units="pix",
-			radius=ltr_size*(2/3),
+			radius=ltr_size,
 			fillColor=[255,255,255],
 			lineColor=[255,255,255],
 			lineWidth = 1,
@@ -238,8 +238,9 @@ class SpellerController:
 			background_color=[1,1,1],
 			border_color=[1,1,1],
 			border_stroke_width=10,
-			size=(min(self.speller.win.size[0],1280), 120),
-			pos=(0.0,0),
+			# size=(min(self.speller.win.size[0],1280), 120),
+			size=(700, 120),
+			pos=(0.0,500),
 			units='pix'
 			)
 	#pos=(0.0,self.speller.win.size[1]/2-30),
@@ -354,7 +355,7 @@ if __name__ == "__main__":
 		gui.win.flip()
 
 	print('__ Initiating Speller __')
-	speller = Speller(size=[700,700], position=[0,0], window=gui.win)
+	speller = Speller(size=[400,400], position=[0,0], window=gui.win)
 	lsl_info = StreamInfo('P300_Speller_Markers', 'Markers', 1, 0, 'string', 'speller_marker_stream')
 	lsl_stream = StreamOutlet(lsl_info)
 
@@ -378,7 +379,8 @@ if __name__ == "__main__":
 	index_count = 0
 	speller.reset()
 
-	prompt = ['SPELLER', 'WORLD']
+	# prompt = ['QUICK']
+	prompt = ['P3EEG']
 
 	print('__ Creating Sequence __')
 	controller = SpellerController(speller=speller, lsl_outlet=lsl_stream)
