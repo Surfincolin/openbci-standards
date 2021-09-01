@@ -385,7 +385,7 @@ if __name__ == "__main__":
 	print('__ Creating Sequence __')
 	controller = SpellerController(speller=speller, lsl_outlet=lsl_stream)
 	
-	controller.update_status_prompt(prompt[0])
+	controller.update_status_prompt(prompt[0]) # currently not drawing, modify with lambda and insert below.
 
 	controller.CreateSequence([
 		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
