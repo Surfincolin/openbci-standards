@@ -211,14 +211,17 @@ class Speller:
 class RunTime():
 	# in ms
 	SHORT_WAIT = 2000.0
-	MED_WAIT = 3000.0
+	MED_WAIT = 2500.0
 	LONG_WAIT = 5000.0
 	# stimuli duration 125ms ~8 frames (133.33ms) at 60Hz
-	STIM = 133.33
+	# stimuli duration 100ms 6 frames (99.999996ms) at 60Hz
+	STIM = 100.0
+	# STIM = 133.33
 	# inter-stimuli interval
-	ISI = 133.33
+	ISI = 183.33
+	# ISI = 133.33
 	# inter-trial interval
-	ITI = 500.0
+	ITI = 2500.0
 
 
 class SpellerController:
@@ -280,11 +283,11 @@ class SpellerController:
 			duration = RunTime.STIM
 			action_list.append((action, duration, self.speller.draw))
 			action = self.speller.reset
-			duration = RunTime.ISI
+			duration = RunTime.ISI - RunTime.STIM
 			action_list.append((action, duration, self.speller.draw))
 
 		action = self.speller.reset
-		duration = RunTime.ITI
+		duration = RunTime.ISI - RunTime.STIM
 		action_list.append((action, duration, self.speller.draw))
 
 		return action_list
@@ -303,13 +306,14 @@ class SpellerController:
 	def get_status_prompt_action(self, duration):
 		return (self.DummyAction, duration, self.draw_prompt_overlay)
 
-
+import sys
 class ActionQueue:
 	def __init__(self):
 		self.queue = []
 
 	def add(self, item):
 		self.queue.append(item)
+		# print('queue len:', len(self.queue), sys.getsizeof(self.queue), 'bytes')
 
 	def get(self):
 		if len(self.queue) < 1:
@@ -379,38 +383,60 @@ if __name__ == "__main__":
 	index_count = 0
 	speller.reset()
 
-	# prompt = ['QUICK']
-	prompt = ['P3EEG']
+	# prompts = ['QUICK']
+	# prompts = ['P3EEG']
+	prompts = ['WAVES', 'BETA', 'MICRO']
+	# prompts = ['WA', 'BE', 'MI']
 
 	print('__ Creating Sequence __')
 	controller = SpellerController(speller=speller, lsl_outlet=lsl_stream)
-	
-	controller.update_status_prompt(prompt[0]) # currently not drawing, modify with lambda and insert below.
+
+	def press_key_to_begin(i_controller):
+		while True:
+			if len(event.getKeys())>0:
+				i_controller.update_status_prompt('START')
+				break
 
 	controller.CreateSequence([
 		(speller.reset, RunTime.SHORT_WAIT, speller.draw),
-		(speller.calibrate, RunTime.ITI, speller.draw),
-		(speller.reset, RunTime.ITI, speller.draw),
-		(speller.calibrate, RunTime.ITI, speller.draw),
+		(speller.calibrate, RunTime.STIM, speller.draw),
+		(speller.reset, RunTime.ISI-RunTime.STIM, speller.draw),
+		(speller.calibrate, RunTime.STIM, speller.draw),
 		(speller.reset, RunTime.MED_WAIT, speller.draw)
 	])
 
-	trails_per_letter = 10
-
-	for i in range(len(prompt[0])):
-		status = prompt[0][:i] + '[' + prompt[0][i] + ']' + prompt[0][i+1:]
+	for prompt in prompts:
+		status = prompt
 		prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
 		new_p_action = lambda input_str=status: controller.update_status_prompt(input_str)
 
-		controller.CreateSequence([
-			(speller.reset, RunTime.SHORT_WAIT, speller.draw),
-			(new_p_action, prompt_action[1], prompt_action[2]),
-			(speller.reset, RunTime.MED_WAIT, speller.draw)
-		])
+		# Participant needs to hit a key when a full word is shown before starting the next trial.
+		press_to_start = lambda ctrl=controller: press_key_to_begin(ctrl)
 
-		for i in range(trails_per_letter):
-			tal = controller.TrialActionList()
-			controller.CreateSequence(tal)
+		controller.CreateSequence([
+				(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+				(new_p_action, prompt_action[1], prompt_action[2]),
+				(press_to_start, 0, prompt_action[2]),
+				(speller.reset, RunTime.SHORT_WAIT, speller.draw)
+			])
+
+		# trails_per_letter = 2
+		trails_per_letter = 15
+
+		for i in range(len(prompt)):
+			status = prompt[:i] + '[' + prompt[i] + ']' + prompt[i+1:]
+			prompt_action = controller.get_status_prompt_action(RunTime.MED_WAIT)
+			new_p_action = lambda input_str=status: controller.update_status_prompt(input_str)
+
+			controller.CreateSequence([
+				(speller.reset, RunTime.SHORT_WAIT, speller.draw),
+				(new_p_action, prompt_action[1], prompt_action[2]),
+				(speller.reset, RunTime.MED_WAIT, speller.draw)
+			])
+
+			for i in range(trails_per_letter):
+				tal = controller.TrialActionList()
+				controller.CreateSequence(tal)
 
 
 
