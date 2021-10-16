@@ -146,7 +146,7 @@ if __name__ == "__main__":
     board.start_stream()
     # time.sleep(1)
     count = 0
-    while count < 6000:
+    while count < 16000:
 	    board.log_data()
 	    count += 1
 

@@ -385,7 +385,8 @@ if __name__ == "__main__":
 
 	# prompts = ['QUICK']
 	# prompts = ['P3EEG']
-	prompts = ['WAVES', 'BETA', 'MICRO']
+	# prompts = ['WAVES', 'BETA', 'MICRO']
+	prompts = ['CYTON', 'ZERO', 'PHASE']
 	# prompts = ['WA', 'BE', 'MI']
 
 	print('__ Creating Sequence __')
